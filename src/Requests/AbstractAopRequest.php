@@ -515,6 +515,30 @@ abstract class AbstractAopRequest extends AbstractRequest
         return $this->setParameter('app_auth_token', $value);
     }
 
+    /** Alipay csr supports parameters begin */
+
+    public function setAppCertSN($value)
+    {
+        return $this->setParameter('app_cert_sn',$value);
+    }
+
+    public function getAppCertSN()
+    {
+        return $this->getParameter('app_cert_sn');
+    }
+
+    
+    public function setAlipayRootCertSN($value)
+    {
+        return $this->setParameter('alipay_root_cert_sn',$value);
+    }
+
+    public function getAlipayRootCertSN()
+    {
+        return $this->getParameter('alipay_root_cert_sn');
+    }
+
+    /** Alipay csr supports parameters end */
 
     /**
      * @throws InvalidRequestException

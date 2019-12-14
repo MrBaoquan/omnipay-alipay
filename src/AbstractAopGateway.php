@@ -499,4 +499,109 @@ abstract class AbstractAopGateway extends AbstractGateway
     {
         return $this->createRequest(DataServiceBillDownloadUrlQueryRequest::class, $parameters);
     }
+
+    /**
+     * ----------- Alipay csr supports below ----------
+     */
+
+
+    /**
+     * 支付宝支付CSR证书参数
+     */
+    public function setAppCertSN($value)
+    {
+        if(is_file($value)){
+            return $this->setParameter('app_cert_sn',$this->getCertSN($value));
+        }
+        return $this->setParameter('app_cert_sn',$value);
+    }
+
+
+    public function getAppCertSN()
+    {
+        return $this->getParameter('app_cert_sn');
+    }
+
+    
+    public function setAlipayRootCertSN($value)
+    {
+        if(is_file($value)){
+           return $this->setParameter('alipay_root_cert_sn',$this->getRootCertSN($value));
+        }
+        return $this->setParameter('alipay_root_cert_sn',$value);
+    }
+
+    public function getAlipayRootCertSN()
+    {
+        return $this->getParameter('alipay_root_cert_sn');
+    }
+
+
+    function array2string($array)
+    {
+        $string = [];
+        if ($array && is_array($array)) {
+            foreach ($array as $key => $value) {
+                $string[] = $key . '=' . $value;
+            }
+        }
+        return implode(',', $string);
+    }
+
+
+    /**
+     * 从证书中提取序列号
+     * @param $cert
+     * @return string
+     */
+    public function getCertSN($certPath)
+    {
+        $cert = file_get_contents($certPath);
+        $ssl = openssl_x509_parse($cert);
+        $SN = md5($this->array2string(array_reverse($ssl['issuer'])) . $ssl['serialNumber']);
+        return $SN;
+    }
+
+     /**
+     * 提取根证书序列号
+     * @param $cert  根证书
+     * @return string|null
+     */
+    public function getRootCertSN($certPath)
+    {
+        $cert = file_get_contents($certPath);
+        $this->alipayRootCertContent = $cert;
+        $array = explode("-----END CERTIFICATE-----", $cert);
+        $SN = null;
+        for ($i = 0; $i < count($array) - 1; $i++) {
+            $ssl[$i] = openssl_x509_parse($array[$i] . "-----END CERTIFICATE-----");
+            if(strpos($ssl[$i]['serialNumber'],'0x') === 0){
+                $ssl[$i]['serialNumber'] = $this->hex2dec($ssl[$i]['serialNumber']);
+            }
+            if ($ssl[$i]['signatureTypeLN'] == "sha1WithRSAEncryption" || $ssl[$i]['signatureTypeLN'] == "sha256WithRSAEncryption") {
+                if ($SN == null) {
+                    $SN = md5($this->array2string(array_reverse($ssl[$i]['issuer'])) . $ssl[$i]['serialNumber']);
+                } else {
+
+                    $SN = $SN . "_" . md5($this->array2string(array_reverse($ssl[$i]['issuer'])) . $ssl[$i]['serialNumber']);
+                }
+            }
+        }
+        return $SN;
+    }
+
+    /**
+     * 从证书中提取公钥
+     * @param $cert
+     * @return mixed
+     */
+    public function getPublicKey($certPath)
+    {
+        $cert = file_get_contents($certPath);
+        $pkey = openssl_pkey_get_public($cert);
+        $keyData = openssl_pkey_get_details($pkey);
+        $public_key = str_replace('-----BEGIN PUBLIC KEY-----', '', $keyData['key']);
+        $public_key = trim(str_replace('-----END PUBLIC KEY-----', '', $public_key));
+        return $public_key;
+    }
 }
